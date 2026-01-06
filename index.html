@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chronos 3D | Reaction Precision</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=JetBrains+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --indigo: #6366f1;
+        --emerald: #22c55e;
+        --red: #ef4444;
+        --text: #f8fafc;
+        --mono: "JetBrains Mono", monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        user-select: none;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+
+      /* HUD Styles */
+      #ui-layer {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        pointer-events: none;
+        padding: 2rem;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .stats-box {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-family: var(--mono);
+      }
+
+      .stats-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 0.25rem;
+      }
+
+      .stats-value {
+        font-size: 1.25rem;
+        color: var(--text);
+      }
+
+      .main-prompt {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      #status-text {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+      }
+
+      #timer-display {
+        font-family: var(--mono);
+        font-size: 4rem;
+        font-weight: 500;
+        opacity: 0.8;
+      }
+
+      .instructions {
+        position: absolute;
+        bottom: 3rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      /* Interaction Zone */
+      #click-surface {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        cursor: pointer;
+      }
+
+      .emerald-text {
+        color: var(--emerald);
+      }
+      .red-text {
+        color: var(--red);
+      }
+      .indigo-text {
+        color: var(--indigo);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="click-surface"></div>
+
+    <div id="ui-layer">
+      <div class="header">
+        <div class="stats-box">
+          <div class="stats-label">Performance</div>
+          <div class="stats-value">
+            CHRONOS <span class="indigo-text">v1.0</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem">
+          <div class="stats-box">
+            <div class="stats-label">Best Reaction</div>
+            <div id="best-score" class="stats-value">-- ms</div>
+          </div>
+          <div class="stats-box">
+            <div class="stats-label">Session Avg</div>
+            <div id="avg-score" class="stats-value">-- ms</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-prompt">
+        <h1 id="status-text">Click to Start</h1>
+        <div id="timer-display">000ms</div>
+      </div>
+
+      <div class="instructions">CLICK ANYWHERE WHEN THE SHAPE TURNS GREEN</div>
+    </div>
+
+    <script>
+      /**
+       * CHRONOS 3D REACTION ENGINE
+       * Logic Architecture:
+       * 1. Three.js provides the visual stimuli.
+       * 2. Game State Machine manages Wait, Trigger, and Result phases.
+       * 3. Performance.now() ensures high-fidelity timing.
+       */
+
+      let scene, camera, renderer, shape, material;
+      let gameState = "IDLE"; // IDLE, WAITING, READY, RESULT
+      let startTime, triggerTime, timerInterval;
+      let scores = JSON.parse(localStorage.getItem("chronos_scores") || "[]");
+
+      const statusEl = document.getElementById("status-text");
+      const timerEl = document.getElementById("timer-display");
+      const bestEl = document.getElementById("best-score");
+      const avgEl = document.getElementById("avg-score");
+      const clickSurface = document.getElementById("click-surface");
+
+      // Colors
+      const THEME = {
+        indigo: 0x6366f1,
+        emerald: 0x22c55e,
+        red: 0xef4444,
+        bg: 0x0f172a,
+      };
+
+      function init() {
+        // Scene Setup
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(THEME.bg);
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+        camera.position.z = 5;
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        // Geometry - High Poly Torus Knot for visual complexity
+        const geometry = new THREE.TorusKnotGeometry(1.2, 0.4, 128, 32);
+        material = new THREE.MeshStandardMaterial({
+          color: THEME.indigo,
+          metalness: 0.7,
+          roughness: 0.2,
+          emissive: THEME.indigo,
+          emissiveIntensity: 0.2,
+        });
+        shape = new THREE.Mesh(geometry, material);
+        scene.add(shape);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        const pointLight2 = new THREE.PointLight(THEME.indigo, 2);
+        pointLight2.position.set(-5, -5, 5);
+        scene.add(pointLight2);
+
+        updateHUD();
+        animate();
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const time = performance.now() * 0.001;
+
+        if (gameState === "WAITING" || gameState === "IDLE") {
+          // Breathing Scale and slow rotation
+          const scale = 1 + Math.sin(time * 2) * 0.05;
+          shape.scale.set(scale, scale, scale);
+          shape.rotation.y += 0.01;
+          shape.rotation.z += 0.005;
+        } else if (gameState === "READY") {
+          // Energetic rotation
+          shape.rotation.y += 0.05;
+          shape.rotation.x += 0.02;
+        } else if (
+          gameState === "RESULT" &&
+          material.color.getHex() === THEME.red
+        ) {
+          // Shake effect for false start
+          shape.position.x = Math.sin(time * 50) * 0.1;
+        } else {
+          shape.position.x = 0;
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      function startGame() {
+        gameState = "WAITING";
+        statusEl.innerText = "Wait for Green...";
+        statusEl.className = "";
+        timerEl.innerText = "000ms";
+
+        material.color.setHex(THEME.indigo);
+        material.emissive.setHex(THEME.indigo);
+
+        const delay = 2000 + Math.random() * 3000;
+
+        triggerTime = setTimeout(() => {
+          if (gameState !== "WAITING") return;
+
+          gameState = "READY";
+          statusEl.innerText = "GO!";
+          statusEl.className = "emerald-text";
+
+          // CRITICAL: Record time exactly when we update visuals
+          material.color.setHex(THEME.emerald);
+          material.emissive.setHex(THEME.emerald);
+          shape.scale.set(1.4, 1.4, 1.4); // Pulse
+
+          startTime = performance.now();
+
+          // Visual timer update (not for logic, just for UI)
+          timerInterval = setInterval(() => {
+            const now = performance.now();
+            timerEl.innerText = Math.floor(now - startTime) + "ms";
+          }, 10);
+        }, delay);
+      }
+
+      function handleInteraction() {
+        if (gameState === "IDLE" || gameState === "RESULT") {
+          startGame();
+        } else if (gameState === "WAITING") {
+          // False Start
+          clearTimeout(triggerTime);
+          gameState = "RESULT";
+          statusEl.innerText = "Too Early!";
+          statusEl.className = "red-text";
+          material.color.setHex(THEME.red);
+          material.emissive.setHex(THEME.red);
+          timerEl.innerText = "---ms";
+        } else if (gameState === "READY") {
+          // Success
+          const endTime = performance.now();
+          const reactionTime = Math.floor(endTime - startTime);
+
+          clearInterval(timerInterval);
+          gameState = "RESULT";
+
+          timerEl.innerText = reactionTime + "ms";
+          statusEl.innerText = getFeedback(reactionTime);
+
+          scores.push(reactionTime);
+          localStorage.setItem("chronos_scores", JSON.stringify(scores));
+          updateHUD();
+        }
+      }
+
+      function getFeedback(ms) {
+        if (ms < 150) return "GODLIKE!";
+        if (ms < 200) return "ELITE";
+        if (ms < 250) return "GREAT";
+        if (ms < 300) return "SOLID";
+        return "KEEP PRACTICING";
+      }
+
+      function updateHUD() {
+        if (scores.length > 0) {
+          const best = Math.min(...scores);
+          const avg = Math.floor(
+            scores.reduce((a, b) => a + b) / scores.length
+          );
+          bestEl.innerText = best + " ms";
+          avgEl.innerText = avg + " ms";
+        }
+      }
+
+      // Listeners
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      clickSurface.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        handleInteraction();
+      });
+
+      // Touch support
+      clickSurface.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          handleInteraction();
+        },
+        { passive: false }
+      );
+
+      // Spacebar support
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          handleInteraction();
+        }
+      });
+
+      init();
+    </script>
+  </body>
+</html>
