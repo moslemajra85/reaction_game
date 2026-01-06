@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chronos 3D | Reaction Precision</title>
+    <title>CHRONOS | Reaction Precision</title>
+    <link rel="icon" type="image/jpeg" href="image.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=JetBrains+Mono:wght@500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=JetBrains+Mono:wght@500&family=Righteous&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -17,6 +18,7 @@
         --indigo: #6366f1;
         --emerald: #22c55e;
         --red: #ef4444;
+        --gold: #f59e0b;
         --text: #f8fafc;
         --mono: "JetBrains Mono", monospace;
       }
@@ -36,18 +38,53 @@
         height: 100vh;
         width: 100vw;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
+        padding: 2rem 1rem;
+      }
+
+      .game-header-title {
+        font-family: "Righteous", cursive;
+        font-size: clamp(2.5rem, 8vw, 4rem);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        background: linear-gradient(to bottom, #fff 40%, var(--indigo));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
+        margin-bottom: 0.5rem;
+      }
+
+      #game-container {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        height: 55vh;
+        max-height: 500px;
+        background: radial-gradient(
+          circle at center,
+          rgba(99, 102, 241, 0.1) 0%,
+          transparent 70%
+        );
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
       }
 
       canvas {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
+        width: 100% !important;
+        height: 100% !important;
         z-index: 1;
       }
 
-      /* HUD Styles */
       #ui-layer {
         position: relative;
         z-index: 10;
@@ -56,34 +93,35 @@
         display: flex;
         flex-direction: column;
         pointer-events: none;
-        padding: 2rem;
+        padding: 1.5rem;
       }
 
       .header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: 0.5rem;
       }
 
       .stats-box {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(10px);
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 1rem 1.5rem;
+        padding: 0.5rem 0.75rem;
         border-radius: 12px;
         font-family: var(--mono);
       }
 
       .stats-label {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: rgba(255, 255, 255, 0.5);
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.1rem;
       }
 
       .stats-value {
-        font-size: 1.25rem;
+        font-size: 0.9rem;
         color: var(--text);
       }
 
@@ -94,45 +132,157 @@
         align-items: center;
         justify-content: center;
         text-align: center;
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      #feedback-card {
+        opacity: 0;
+        transform: scale(0.8);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+      }
+
+      #feedback-card.active {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      #summary-report {
+        display: none;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 2rem;
+        border: 1px solid var(--indigo);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        z-index: 100;
+        text-align: center;
+        box-shadow: 0 0 50px rgba(99, 102, 241, 0.3);
+      }
+
+      .report-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin: 1.5rem 0;
+      }
+
+      .report-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .report-item span:first-child {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-transform: uppercase;
+      }
+
+      .report-item span:last-child {
+        font-family: var(--mono);
+        font-size: 1.2rem;
+        color: var(--indigo);
+      }
+
+      .rank-badge {
+        font-family: "Righteous", cursive;
+        font-size: 1.2rem;
+        padding: 0.4rem 1.2rem;
+        border-radius: 50px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-transform: uppercase;
       }
 
       #status-text {
-        font-size: 2.5rem;
+        font-size: clamp(1.5rem, 5vw, 2.2rem);
         font-weight: 700;
         letter-spacing: -0.02em;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         text-transform: uppercase;
+        text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
       #timer-display {
         font-family: var(--mono);
-        font-size: 4rem;
-        font-weight: 500;
-        opacity: 0.8;
+        font-size: clamp(2rem, 6vw, 3.5rem);
+        font-weight: 700;
       }
 
-      .instructions {
-        position: absolute;
-        bottom: 3rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.3);
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.6);
+      .how-to-play {
+        width: 100%;
+        max-width: 800px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        margin-top: 1rem;
       }
 
-      /* Interaction Zone */
+      .guide-step {
+        text-align: center;
+      }
+
+      .guide-step span {
+        display: inline-block;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--indigo);
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+        padding-bottom: 2px;
+      }
+
+      .guide-step p {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.5;
+        font-weight: 300;
+      }
+
       #click-surface {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         z-index: 5;
         cursor: pointer;
+        background: transparent;
+      }
+
+      /* Rank Themes */
+      .rank-godlike {
+        color: #fff;
+        text-shadow: 0 0 20px #818cf8;
+        background: rgba(129, 140, 248, 0.3);
+      }
+      .rank-elite {
+        color: var(--emerald);
+        text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+        background: rgba(34, 197, 94, 0.2);
+      }
+      .rank-optimal {
+        color: var(--indigo);
+        text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        background: rgba(99, 102, 241, 0.2);
+      }
+      .rank-latency {
+        color: #94a3b8;
+        background: rgba(148, 163, 184, 0.1);
       }
 
       .emerald-text {
@@ -144,110 +294,255 @@
       .indigo-text {
         color: var(--indigo);
       }
+
+      @media (max-width: 640px) {
+        .how-to-play {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+          padding: 1rem;
+        }
+        body {
+          justify-content: flex-start;
+          overflow-y: auto;
+        }
+        #game-container {
+          height: 40vh;
+          margin: 1rem 0;
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="click-surface"></div>
+    <h1 class="game-header-title">CHRONOS</h1>
 
-    <div id="ui-layer">
-      <div class="header">
-        <div class="stats-box">
-          <div class="stats-label">Performance</div>
-          <div class="stats-value">
-            CHRONOS <span class="indigo-text">v1.0</span>
+    <div id="game-container">
+      <div id="click-surface"></div>
+      <div id="ui-layer">
+        <div class="header">
+          <div class="stats-box">
+            <div class="stats-label">Session</div>
+            <div id="trial-count" class="stats-value">TRIAL 0/5</div>
+          </div>
+          <div style="display: flex; gap: 0.5rem">
+            <div class="stats-box">
+              <div class="stats-label">Best</div>
+              <div id="best-score" class="stats-value">-- ms</div>
+            </div>
           </div>
         </div>
-        <div style="display: flex; gap: 1rem">
-          <div class="stats-box">
-            <div class="stats-label">Best Reaction</div>
-            <div id="best-score" class="stats-value">-- ms</div>
+
+        <div class="main-prompt" id="prompt-container">
+          <div id="feedback-card">
+            <div id="rank-badge" class="rank-badge">RANK</div>
           </div>
-          <div class="stats-box">
-            <div class="stats-label">Session Avg</div>
-            <div id="avg-score" class="stats-value">-- ms</div>
-          </div>
+          <h2 id="status-text">Neural Link Ready</h2>
+          <div id="timer-display">000ms</div>
+        </div>
+
+        <div
+          id="action-hint"
+          class="instructions"
+          style="
+            text-align: center;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+          "
+        >
+          Tap anywhere to start
         </div>
       </div>
 
-      <div class="main-prompt">
-        <h1 id="status-text">Click to Start</h1>
-        <div id="timer-display">000ms</div>
+      <div id="summary-report">
+        <h2
+          style="font-family: 'Righteous'; color: #fff; margin-bottom: 0.5rem"
+        >
+          SESSION COMPLETE
+        </h2>
+        <div class="report-grid">
+          <div class="report-item">
+            <span>Average</span>
+            <span id="final-avg">0ms</span>
+          </div>
+          <div class="report-item">
+            <span>Precision</span>
+            <span id="final-best">0ms</span>
+          </div>
+        </div>
+        <p
+          id="final-rank-text"
+          style="
+            color: var(--emerald);
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+          "
+        ></p>
+        <div
+          style="
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+          "
+        >
+          Press <span style="color: #fff; font-weight: bold">SPACE BAR</span> to
+          recalibrate
+        </div>
       </div>
-
-      <div class="instructions">CLICK ANYWHERE WHEN THE SHAPE TURNS GREEN</div>
     </div>
 
+    <section class="how-to-play">
+      <div class="guide-step">
+        <span>Initiate</span>
+        <p>Complete <b>5 trials</b> to verify your neural response latency.</p>
+      </div>
+      <div class="guide-step">
+        <span>Focus</span>
+        <p>React immediately when the diamond shifts to <b>emerald</b>.</p>
+      </div>
+      <div class="guide-step">
+        <span>Review</span>
+        <p>Analyze your <b>performance report</b> at the end of the session.</p>
+      </div>
+    </section>
+
     <script>
-      /**
-       * CHRONOS 3D REACTION ENGINE
-       * Logic Architecture:
-       * 1. Three.js provides the visual stimuli.
-       * 2. Game State Machine manages Wait, Trigger, and Result phases.
-       * 3. Performance.now() ensures high-fidelity timing.
-       */
-
-      let scene, camera, renderer, shape, material;
-      let gameState = "IDLE"; // IDLE, WAITING, READY, RESULT
+      let scene,
+        camera,
+        renderer,
+        shape,
+        core,
+        material,
+        highlightLight,
+        backLight;
+      let gameState = "IDLE";
       let startTime, triggerTime, timerInterval;
-      let scores = JSON.parse(localStorage.getItem("chronos_scores") || "[]");
+      let sessionScores = [];
+      let totalTrials = 5;
+      let currentTrial = 0;
+      let audioCtx;
 
+      const container = document.getElementById("game-container");
       const statusEl = document.getElementById("status-text");
       const timerEl = document.getElementById("timer-display");
       const bestEl = document.getElementById("best-score");
-      const avgEl = document.getElementById("avg-score");
+      const trialEl = document.getElementById("trial-count");
       const clickSurface = document.getElementById("click-surface");
+      const feedbackCard = document.getElementById("feedback-card");
+      const rankBadge = document.getElementById("rank-badge");
+      const actionHint = document.getElementById("action-hint");
 
-      // Colors
+      const summaryReport = document.getElementById("summary-report");
+      const finalAvgEl = document.getElementById("final-avg");
+      const finalBestEl = document.getElementById("final-best");
+      const finalRankText = document.getElementById("final-rank-text");
+
       const THEME = {
         indigo: 0x6366f1,
         emerald: 0x22c55e,
         red: 0xef4444,
-        bg: 0x0f172a,
+        white: 0xffffff,
+      };
+
+      function initAudio() {
+        if (!audioCtx)
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      function playTone(freq, type, duration, volume) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          audioCtx.currentTime + duration
+        );
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      }
+
+      const SFX = {
+        start: () => playTone(440, "sine", 0.1, 0.1),
+        trigger: () => playTone(880, "triangle", 0.2, 0.2),
+        success: (rank) => {
+          const base = rank === "GODLIKE" ? 659 : rank === "ELITE" ? 523 : 440;
+          playTone(base, "sine", 0.1, 0.1);
+          setTimeout(() => playTone(base * 1.5, "sine", 0.3, 0.05), 60);
+        },
+        fail: () => playTone(110, "sawtooth", 0.3, 0.1),
       };
 
       function init() {
-        // Scene Setup
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(THEME.bg);
-
         camera = new THREE.PerspectiveCamera(
-          75,
-          window.innerWidth / window.innerHeight,
+          45,
+          container.clientWidth / container.clientHeight,
           0.1,
           1000
         );
-        camera.position.z = 5;
+        camera.position.z = 6;
 
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
+        container.appendChild(renderer.domElement);
 
-        // Geometry - High Poly Torus Knot for visual complexity
-        const geometry = new THREE.TorusKnotGeometry(1.2, 0.4, 128, 32);
-        material = new THREE.MeshStandardMaterial({
+        // Diamond Geometry (Octahedron)
+        const geometry = new THREE.OctahedronGeometry(1.2, 0);
+
+        // Glass Material
+        material = new THREE.MeshPhysicalMaterial({
           color: THEME.indigo,
-          metalness: 0.7,
-          roughness: 0.2,
-          emissive: THEME.indigo,
-          emissiveIntensity: 0.2,
+          metalness: 0.1,
+          roughness: 0.05,
+          transmission: 0.9,
+          thickness: 0.5,
+          envMapIntensity: 1,
+          clearcoat: 1,
+          clearcoatRoughness: 0.1,
+          opacity: 0.7,
+          transparent: true,
+          reflectivity: 0.9,
         });
-        shape = new THREE.Mesh(geometry, material);
+
+        core = new THREE.Mesh(geometry, material);
+        shape = new THREE.Group();
+        shape.add(core);
+
+        // Inner Sparkle Core
+        const innerGeo = new THREE.OctahedronGeometry(0.4, 0);
+        const innerMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.2,
+        });
+        const inner = new THREE.Mesh(innerGeo, innerMat);
+        shape.add(inner);
+
         scene.add(shape);
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Precious Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
         scene.add(ambientLight);
 
-        const pointLight = new THREE.PointLight(0xffffff, 1);
-        pointLight.position.set(5, 5, 5);
-        scene.add(pointLight);
+        highlightLight = new THREE.PointLight(THEME.indigo, 2, 10);
+        highlightLight.position.set(2, 2, 2);
+        scene.add(highlightLight);
 
-        const pointLight2 = new THREE.PointLight(THEME.indigo, 2);
-        pointLight2.position.set(-5, -5, 5);
-        scene.add(pointLight2);
+        backLight = new THREE.PointLight(0xffffff, 1, 10);
+        backLight.position.set(-2, -2, -2);
+        scene.add(backLight);
 
-        updateHUD();
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        rimLight.position.set(0, 5, 0);
+        scene.add(rimLight);
+
         animate();
       }
 
@@ -255,123 +550,200 @@
         requestAnimationFrame(animate);
         const time = performance.now() * 0.001;
 
-        if (gameState === "WAITING" || gameState === "IDLE") {
-          // Breathing Scale and slow rotation
-          const scale = 1 + Math.sin(time * 2) * 0.05;
-          shape.scale.set(scale, scale, scale);
-          shape.rotation.y += 0.01;
-          shape.rotation.z += 0.005;
+        if (
+          gameState === "WAITING" ||
+          gameState === "IDLE" ||
+          gameState === "SUMMARY"
+        ) {
+          shape.rotation.y = time * 0.5;
+          shape.rotation.z = Math.sin(time * 0.3) * 0.2;
+          const float = 1 + Math.sin(time * 2) * 0.05;
+          shape.scale.set(float, float, float);
+
+          // Animate light for "shimmer"
+          highlightLight.position.x = Math.cos(time) * 3;
+          highlightLight.position.y = Math.sin(time) * 3;
         } else if (gameState === "READY") {
-          // Energetic rotation
-          shape.rotation.y += 0.05;
-          shape.rotation.x += 0.02;
+          shape.rotation.y += 0.15;
+          const pulse = 1.3 + Math.sin(time * 25) * 0.1;
+          shape.scale.set(pulse, pulse, pulse);
         } else if (
           gameState === "RESULT" &&
           material.color.getHex() === THEME.red
         ) {
-          // Shake effect for false start
-          shape.position.x = Math.sin(time * 50) * 0.1;
+          shape.position.x = Math.sin(time * 60) * 0.05;
         } else {
           shape.position.x = 0;
         }
-
         renderer.render(scene, camera);
       }
 
       function startGame() {
+        if (currentTrial >= totalTrials) {
+          showSummary();
+          return;
+        }
+
+        initAudio();
         gameState = "WAITING";
-        statusEl.innerText = "Wait for Green...";
+        statusEl.innerText = "Refracting...";
         statusEl.className = "";
         timerEl.innerText = "000ms";
+        feedbackCard.classList.remove("active");
+        actionHint.innerText = "Focus on the prism...";
 
+        SFX.start();
         material.color.setHex(THEME.indigo);
-        material.emissive.setHex(THEME.indigo);
+        material.emissiveIntensity = 0;
+        highlightLight.color.setHex(THEME.indigo);
 
-        const delay = 2000 + Math.random() * 3000;
-
+        const delay = 1800 + Math.random() * 3200;
         triggerTime = setTimeout(() => {
           if (gameState !== "WAITING") return;
-
           gameState = "READY";
-          statusEl.innerText = "GO!";
+          statusEl.innerText = "STRIKE!";
           statusEl.className = "emerald-text";
+          SFX.trigger();
 
-          // CRITICAL: Record time exactly when we update visuals
           material.color.setHex(THEME.emerald);
-          material.emissive.setHex(THEME.emerald);
-          shape.scale.set(1.4, 1.4, 1.4); // Pulse
+          highlightLight.color.setHex(THEME.emerald);
+          highlightLight.intensity = 4;
 
           startTime = performance.now();
-
-          // Visual timer update (not for logic, just for UI)
           timerInterval = setInterval(() => {
-            const now = performance.now();
-            timerEl.innerText = Math.floor(now - startTime) + "ms";
+            timerEl.innerText =
+              Math.floor(performance.now() - startTime) + "ms";
           }, 10);
         }, delay);
       }
 
       function handleInteraction() {
+        if (gameState === "SUMMARY") return;
+
         if (gameState === "IDLE" || gameState === "RESULT") {
           startGame();
         } else if (gameState === "WAITING") {
-          // False Start
           clearTimeout(triggerTime);
           gameState = "RESULT";
-          statusEl.innerText = "Too Early!";
+          SFX.fail();
+          statusEl.innerText = "FRACTURED";
           statusEl.className = "red-text";
           material.color.setHex(THEME.red);
-          material.emissive.setHex(THEME.red);
+          highlightLight.color.setHex(THEME.red);
           timerEl.innerText = "---ms";
+          actionHint.innerText = "Tap to recalibrate trial";
         } else if (gameState === "READY") {
-          // Success
-          const endTime = performance.now();
-          const reactionTime = Math.floor(endTime - startTime);
-
+          const reaction = Math.floor(performance.now() - startTime);
           clearInterval(timerInterval);
           gameState = "RESULT";
 
-          timerEl.innerText = reactionTime + "ms";
-          statusEl.innerText = getFeedback(reactionTime);
+          currentTrial++;
+          sessionScores.push(reaction);
 
-          scores.push(reactionTime);
-          localStorage.setItem("chronos_scores", JSON.stringify(scores));
+          const performanceInfo = getPerformanceRank(reaction);
+          SFX.success(performanceInfo.rank);
+
+          timerEl.innerText = reaction + "ms";
+          timerEl.className = performanceInfo.class;
+          statusEl.innerText = performanceInfo.rank;
+          statusEl.className = performanceInfo.class;
+
+          rankBadge.innerText = performanceInfo.rank;
+          rankBadge.className = "rank-badge " + performanceInfo.badgeClass;
+          feedbackCard.classList.add("active");
+
           updateHUD();
+
+          if (currentTrial >= totalTrials) {
+            actionHint.innerText = "Analysis complete.";
+            setTimeout(showSummary, 1200);
+          } else {
+            actionHint.innerText = "Tap for next trial";
+          }
         }
       }
 
-      function getFeedback(ms) {
-        if (ms < 150) return "GODLIKE!";
-        if (ms < 200) return "ELITE";
-        if (ms < 250) return "GREAT";
-        if (ms < 300) return "SOLID";
-        return "KEEP PRACTICING";
+      function getPerformanceRank(ms) {
+        if (ms < 180)
+          return {
+            rank: "GODLIKE",
+            class: "rank-godlike",
+            badgeClass: "rank-godlike",
+          };
+        if (ms < 230)
+          return {
+            rank: "ELITE",
+            class: "emerald-text",
+            badgeClass: "rank-elite",
+          };
+        if (ms < 280)
+          return {
+            rank: "OPTIMAL",
+            class: "indigo-text",
+            badgeClass: "rank-optimal",
+          };
+        return {
+          rank: "LATENCY",
+          class: "rank-latency",
+          badgeClass: "rank-latency",
+        };
       }
 
       function updateHUD() {
-        if (scores.length > 0) {
-          const best = Math.min(...scores);
-          const avg = Math.floor(
-            scores.reduce((a, b) => a + b) / scores.length
-          );
+        trialEl.innerText = `TRIAL ${currentTrial}/${totalTrials}`;
+        if (sessionScores.length > 0) {
+          const best = Math.min(...sessionScores);
           bestEl.innerText = best + " ms";
-          avgEl.innerText = avg + " ms";
         }
       }
 
-      // Listeners
+      function showSummary() {
+        gameState = "SUMMARY";
+        const avg = Math.floor(
+          sessionScores.reduce((a, b) => a + b) / sessionScores.length
+        );
+        const best = Math.min(...sessionScores);
+        const rankInfo = getPerformanceRank(avg);
+
+        finalAvgEl.innerText = avg + "ms";
+        finalBestEl.innerText = best + "ms";
+        finalRankText.innerText = `PRISM RANK: ${rankInfo.rank}`;
+        finalRankText.className = rankInfo.class;
+
+        summaryReport.style.display = "block";
+        clickSurface.style.display = "none";
+      }
+
+      function restartSession() {
+        sessionScores = [];
+        currentTrial = 0;
+        gameState = "IDLE";
+        summaryReport.style.display = "none";
+        clickSurface.style.display = "block";
+        feedbackCard.classList.remove("active");
+        statusEl.innerText = "Neural Link Ready";
+        statusEl.className = "";
+        timerEl.innerText = "000ms";
+        timerEl.className = "";
+        actionHint.innerText = "Tap anywhere to start";
+        bestEl.innerText = "-- ms";
+
+        material.color.setHex(THEME.indigo);
+        highlightLight.color.setHex(THEME.indigo);
+        highlightLight.intensity = 2;
+        updateHUD();
+      }
+
       window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.aspect = container.clientWidth / container.clientHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(container.clientWidth, container.clientHeight);
       });
 
       clickSurface.addEventListener("mousedown", (e) => {
         e.preventDefault();
         handleInteraction();
       });
-
-      // Touch support
       clickSurface.addEventListener(
         "touchstart",
         (e) => {
@@ -381,14 +753,18 @@
         { passive: false }
       );
 
-      // Spacebar support
       window.addEventListener("keydown", (e) => {
         if (e.code === "Space") {
-          handleInteraction();
+          if (gameState === "SUMMARY") {
+            restartSession();
+          } else {
+            handleInteraction();
+          }
         }
+        if (e.code === "Enter") handleInteraction();
       });
 
-      init();
+      window.onload = init;
     </script>
   </body>
 </html>
